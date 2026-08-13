@@ -147,29 +147,33 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--pri); outline-of
 #previewWrap{background:#fff; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin-bottom:12px}
 #previewScale{transform-origin:top left}
 /* ================= REPORT SHEET ================= */
+/* A4 1枚（印刷可能領域 186mm × 273mm）に収まるよう行間・余白を詰めてある。
+   数値を緩めると2枚目にあふれるので、変更したら doPrint() の実測ログで確認すること */
 #sheet{
   width:186mm; background:#fff; color:#000; padding:0;
   font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
-  font-size:10.5pt; line-height:1.55;
+  font-size:10.5pt; line-height:1.4;
+  -webkit-text-size-adjust:100%;   /* iOSが印刷時に文字を勝手に拡大するのを防ぐ */
 }
-#sheet .title{text-align:center; font-size:16pt; font-weight:700; letter-spacing:.5em; margin:0 0 10px; text-indent:.5em}
+#sheet .title{text-align:center; font-size:15pt; font-weight:700; letter-spacing:.5em; margin:0 0 6px; text-indent:.5em}
 #sheet table{width:100%; border-collapse:collapse; table-layout:fixed}
-#sheet .hdr td{border:1px solid #000; padding:6px 8px; vertical-align:top}
-#sheet .hdr .dt{text-align:right; border:0; padding:2px 4px 6px}
-#sheet .hdr .to{font-size:11.5pt; min-height:44px}
-#sheet .hdr .ph{font-size:10pt; line-height:1.45}
-#sheet .hdr .ph b{font-size:11pt}
-#sheet .line{padding:7px 8px; border:1px solid #000; border-top:0}
+#sheet .hdr td{border:1px solid #000; padding:4px 8px; vertical-align:top}
+#sheet .hdr .dt{text-align:right; border:0; padding:0 4px 4px}
+#sheet .hdr .to{font-size:11pt; min-height:38px}
+#sheet .hdr .ph{font-size:9.5pt; line-height:1.35}
+#sheet .hdr .ph b{font-size:10.5pt}
+#sheet .line{padding:4px 8px; border:1px solid #000; border-top:0}
 #sheet .u{display:inline-block; min-width:150px; border-bottom:1px solid #000; text-align:center; padding:0 6px; font-family:-apple-system,"Hiragino Sans",sans-serif}
-#sheet h3{font-size:11pt; font-weight:700; margin:13px 0 5px}
-#sheet .opts{margin:0 0 2px}
-#sheet .opt{display:inline-block; margin:0 18px 3px 0; white-space:nowrap}
+#sheet h3{font-size:10.5pt; font-weight:700; margin:8px 0 3px}
+#sheet .opts{margin:0}
+#sheet .opt{display:inline-block; margin:0 16px 1px 0; white-space:nowrap; line-height:1.5}
 #sheet .bx{font-family:-apple-system,"Hiragino Sans",sans-serif; font-weight:700; margin-right:4px}
-#sheet .ev th,#sheet .ev td{border:1px solid #000; padding:5px 6px; font-size:10pt}
+#sheet .ev th,#sheet .ev td{border:1px solid #000; padding:2.5px 6px; font-size:9.5pt; line-height:1.3}
 #sheet .ev th{font-weight:400; text-align:left}
 #sheet .ev td.c{text-align:center; font-family:-apple-system,"Hiragino Sans",sans-serif; font-weight:700}
 #sheet .ev thead th{text-align:center; font-weight:700}
-#sheet .cmt{border:1px solid #000; padding:7px 9px; min-height:52px; white-space:pre-wrap; font-size:10pt; line-height:1.6}
+#sheet .cmt{border:1px solid #000; padding:5px 9px; min-height:34px; white-space:pre-wrap; font-size:9.5pt; line-height:1.5}
+#sheet > *:last-child{margin-bottom:0}
 #sheet .fill{font-family:-apple-system,"Hiragino Sans",sans-serif}
 /* ---------- print ---------- */
 @media print{
@@ -788,6 +792,31 @@ function isInPlace(path){
       || path === "notes.verbal";
 }
 
+/* A4 の印刷可能領域（余白12mm）。CSS の @page と必ず揃えること */
+const PAGE_W_MM = 186, PAGE_H_MM = 273;
+
+/* 1mm が何 px かを実測する（端末や表示倍率で変わるため決め打ちにしない） */
+function pxPerMm(){
+  const probe = document.createElement("div");
+  probe.style.cssText = "width:100mm;position:absolute;top:0;left:-9999px;visibility:hidden";
+  document.body.appendChild(probe);
+  const v = probe.getBoundingClientRect().width / 100;
+  probe.remove();
+  return v || 3.7795;
+}
+
+/* はみ出す分だけ縮めて必ず1枚に収める（コメントが長い場合の保険） */
+function fitToOnePage(sheet){
+  sheet.style.zoom = "";                 // 素の高さを測るため一旦戻す
+  const mm = pxPerMm();
+  const h = sheet.scrollHeight / mm;
+  if(h > PAGE_H_MM){
+    // 0.99 は端数で2枚目に落ちるのを防ぐための余裕。極端に小さくはしない
+    sheet.style.zoom = String(Math.max(0.65, (PAGE_H_MM / h) * 0.99));
+  }
+  return h;
+}
+
 /* 印刷時は main ごと非表示になるため、シートを印刷用領域へ移してから印刷する */
 function doPrint(){
   const printRoot = document.getElementById("printRoot");
@@ -795,11 +824,15 @@ function doPrint(){
   if(!printRoot || !sheet) return;
 
   printRoot.appendChild(sheet);
+  printRoot.style.width = PAGE_W_MM + "mm";   // 印刷幅で測るため揃えておく
+  fitToOnePage(sheet);
 
   let restored = false;
   const restore = ()=>{
     if(restored) return;
     restored = true;
+    sheet.style.zoom = "";                    // 画面プレビューは等倍に戻す
+    printRoot.style.width = "";
     // 連続で押されても確実にプレビュー枠へ戻すため、戻し先はその都度探す
     const home = document.getElementById("previewScale");
     if(home){ home.appendChild(sheet); fitPreview(); }
