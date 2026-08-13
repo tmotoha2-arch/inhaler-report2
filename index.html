@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- apple-mobile-web-app-capable は付けない：
+     フルスクリーン起動にすると iOS から共有・プリントボタンが消え、PDF保存ができなくなるため -->
+<meta name="apple-mobile-web-app-title" content="吸入指導報告書">
+<meta name="theme-color" content="#0e6ba8">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>吸入指導報告書</title>
+<style>
+:root{
+  --bg:#f2f4f7; --card:#ffffff; --fg:#12181f; --muted:#5f6b7a; --line:#d8dfe7;
+  --pri:#0e6ba8; --pri-fg:#ffffff; --pri-soft:#e3effa;
+  --ok:#177245; --ok-soft:#e2f3e9;
+  --ng:#b3261e; --ng-soft:#fdeceb;
+  --warn:#8a5a00; --warn-soft:#fdf3df;
+  --radius:12px;
+  --safe-b:env(safe-area-inset-bottom,0px);
+  --bar-h:64px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#11151a; --card:#1a2027; --fg:#e8edf2; --muted:#9aa7b5; --line:#2c3641;
+    --pri:#4aa3df; --pri-fg:#08131c; --pri-soft:#123047;
+    --ok:#5cc98c; --ok-soft:#12301f;
+    --ng:#f2857c; --ng-soft:#341714;
+    --warn:#e3b45a; --warn-soft:#332a12;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  font-size:16px; line-height:1.5;
+  padding-bottom:calc(var(--bar-h) + var(--safe-b) + 8px);
+}
+/* ---------- header ---------- */
+header{
+  position:sticky; top:0; z-index:40;
+  background:var(--pri); color:var(--pri-fg);
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px;
+  display:flex; align-items:center; gap:8px;
+  box-shadow:0 1px 4px rgba(0,0,0,.18);
+}
+header h1{font-size:17px; margin:0; flex:1; font-weight:700; letter-spacing:.02em}
+.hbtn{
+  background:rgba(255,255,255,.16); color:inherit; border:0; border-radius:8px;
+  font-size:13px; padding:7px 11px; font-weight:600; cursor:pointer; white-space:nowrap;
+}
+/* ---------- jump bar ---------- */
+#jumpbar{
+  position:sticky; z-index:35;
+  top:calc(env(safe-area-inset-top,0px) + 41px);
+  background:var(--card); border-bottom:1px solid var(--line);
+  display:flex; gap:6px; overflow-x:auto; padding:8px 10px;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none;
+}
+#jumpbar::-webkit-scrollbar{display:none}
+#jumpbar button{
+  flex:0 0 auto; font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+  background:var(--bg); color:var(--muted); border:1px solid var(--line);
+  border-radius:999px; padding:6px 13px; white-space:nowrap;
+}
+/* ---------- layout ---------- */
+main{padding:14px 12px 8px; max-width:760px; margin:0 auto}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:12px}
+.card{scroll-margin-top:calc(env(safe-area-inset-top,0px) + 96px)}
+.card > h2{font-size:14px; margin:0 0 12px; color:var(--pri); letter-spacing:.04em}
+.field{margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+label.lbl{display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:6px}
+input[type=text],input[type=date],textarea,select{
+  width:100%; font:inherit; color:var(--fg); background:var(--bg);
+  border:1px solid var(--line); border-radius:9px; padding:11px 12px;
+}
+textarea{min-height:96px; resize:vertical}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--pri); outline-offset:-1px}
+.hint{font-size:12px; color:var(--muted); margin-top:6px}
+/* ---------- segmented ---------- */
+.seg{display:flex; gap:6px; flex-wrap:wrap}
+.seg.grow > button{flex:1 1 0; min-width:96px}
+.seg button{
+  font:inherit; font-size:14px; font-weight:600; cursor:pointer;
+  background:var(--bg); color:var(--fg); border:1px solid var(--line);
+  border-radius:9px; padding:10px 12px; text-align:center;
+}
+.seg button[aria-pressed=true]{background:var(--pri); border-color:var(--pri); color:var(--pri-fg)}
+.chips{display:flex; gap:6px; flex-wrap:wrap}
+.chips button{
+  font:inherit; font-size:14px; cursor:pointer; background:var(--bg); color:var(--fg);
+  border:1px solid var(--line); border-radius:999px; padding:8px 14px;
+}
+.chips button[aria-pressed=true]{background:var(--pri); border-color:var(--pri); color:var(--pri-fg); font-weight:700}
+.chips button.add{border-style:dashed; color:var(--pri); font-weight:600}
+/* ---------- check rows ---------- */
+.chk{
+  display:flex; align-items:flex-start; gap:10px; width:100%; text-align:left;
+  font:inherit; font-size:15px; cursor:pointer; background:var(--bg); color:var(--fg);
+  border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:8px;
+}
+.chk[aria-pressed=true]{background:var(--pri-soft); border-color:var(--pri)}
+.chk .box{
+  flex:0 0 auto; width:22px; height:22px; border:2px solid var(--muted); border-radius:6px;
+  display:grid; place-items:center; font-size:15px; font-weight:800; line-height:1; color:transparent;
+}
+.chk[aria-pressed=true] .box{border-color:var(--pri); color:var(--pri)}
+/* ---------- eval table ---------- */
+.tbl{width:100%; border-collapse:collapse; font-size:13px}
+.tbl th,.tbl td{border:1px solid var(--line); padding:7px 6px; vertical-align:middle}
+.tbl th{background:var(--bg); font-weight:600; text-align:left; color:var(--muted)}
+.tbl td.pick{text-align:center; padding:5px}
+.pair{display:flex; gap:4px; justify-content:center}
+.pair button{
+  font:inherit; font-size:15px; font-weight:800; cursor:pointer; width:42px; height:38px;
+  background:var(--bg); color:var(--muted); border:1px solid var(--line); border-radius:8px;
+}
+.pair button.ok[aria-pressed=true]{background:var(--ok-soft); border-color:var(--ok); color:var(--ok)}
+.pair button.ng[aria-pressed=true]{background:var(--ng-soft); border-color:var(--ng); color:var(--ng)}
+.pair.wide button{width:auto; flex:1 1 0; font-size:13px; font-weight:700; padding:0 4px}
+/* ---------- misc ---------- */
+.banner{border-radius:10px; padding:11px 13px; font-size:13px; margin-bottom:12px; border:1px solid}
+.banner.warn{background:var(--warn-soft); border-color:var(--warn); color:var(--warn)}
+.rowbtns{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px}
+.btn{
+  font:inherit; font-size:15px; font-weight:700; cursor:pointer; flex:1 1 0; min-width:120px;
+  border-radius:10px; padding:13px 14px; border:1px solid var(--line);
+  background:var(--card); color:var(--fg);
+}
+.btn.primary{background:var(--pri); border-color:var(--pri); color:var(--pri-fg)}
+.btn.danger{color:var(--ng); border-color:var(--ng)}
+.listrow{display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--line); font-size:15px}
+.listrow:last-child{border-bottom:0}
+.listrow span{flex:1; min-width:0; overflow-wrap:anywhere}
+.listrow button{font:inherit; font-size:13px; color:var(--ng); background:none; border:1px solid var(--ng); border-radius:7px; padding:5px 10px; cursor:pointer}
+/* ---------- bottom action bar ---------- */
+#actionbar{
+  position:fixed; left:0; right:0; bottom:0; z-index:40;
+  display:flex; gap:8px; padding:9px 12px calc(9px + var(--safe-b));
+  background:var(--card); border-top:1px solid var(--line);
+}
+#actionbar .btn{margin:0}
+/* ---------- preview shell ---------- */
+#previewWrap{background:#fff; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin-bottom:12px}
+#previewScale{transform-origin:top left}
+/* ================= REPORT SHEET ================= */
+#sheet{
+  width:186mm; background:#fff; color:#000; padding:0;
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:10.5pt; line-height:1.55;
+}
+#sheet .title{text-align:center; font-size:16pt; font-weight:700; letter-spacing:.5em; margin:0 0 10px; text-indent:.5em}
+#sheet table{width:100%; border-collapse:collapse; table-layout:fixed}
+#sheet .hdr td{border:1px solid #000; padding:6px 8px; vertical-align:top}
+#sheet .hdr .dt{text-align:right; border:0; padding:2px 4px 6px}
+#sheet .hdr .to{font-size:11.5pt; min-height:44px}
+#sheet .hdr .ph{font-size:10pt; line-height:1.45}
+#sheet .hdr .ph b{font-size:11pt}
+#sheet .line{padding:7px 8px; border:1px solid #000; border-top:0}
+#sheet .u{display:inline-block; min-width:150px; border-bottom:1px solid #000; text-align:center; padding:0 6px; font-family:-apple-system,"Hiragino Sans",sans-serif}
+#sheet h3{font-size:11pt; font-weight:700; margin:13px 0 5px}
+#sheet .opts{margin:0 0 2px}
+#sheet .opt{display:inline-block; margin:0 18px 3px 0; white-space:nowrap}
+#sheet .bx{font-family:-apple-system,"Hiragino Sans",sans-serif; font-weight:700; margin-right:4px}
+#sheet .ev th,#sheet .ev td{border:1px solid #000; padding:5px 6px; font-size:10pt}
+#sheet .ev th{font-weight:400; text-align:left}
+#sheet .ev td.c{text-align:center; font-family:-apple-system,"Hiragino Sans",sans-serif; font-weight:700}
+#sheet .ev thead th{text-align:center; font-weight:700}
+#sheet .cmt{border:1px solid #000; padding:7px 9px; min-height:52px; white-space:pre-wrap; font-size:10pt; line-height:1.6}
+#sheet .fill{font-family:-apple-system,"Hiragino Sans",sans-serif}
+/* ---------- print ---------- */
+@media print{
+  @page{size:A4 portrait; margin:12mm 12mm}
+  html,body{background:#fff !important; padding:0 !important; margin:0 !important}
+  header,#jumpbar,#actionbar,main{display:none !important}
+  #printRoot{position:static !important; left:auto !important; width:100% !important}
+  #sheet{width:100% !important; transform:none !important}
+  #sheet .ev tr,#sheet .hdr tr{page-break-inside:avoid}
+}
+#printRoot{position:absolute; left:-10000px; top:0; width:186mm}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>吸入指導報告書</h1>
+  <button class="hbtn" data-act="new">新規</button>
+  <button class="hbtn" data-act="settings">設定</button>
+</header>
+
+<div id="jumpbar"></div>
+<main id="view"></main>
+
+<div id="actionbar">
+  <button class="btn" data-act="jump" data-target="secPrev">プレビュー</button>
+  <button class="btn primary" data-act="print">PDF保存・印刷</button>
+</div>
+
+<div id="printRoot"><div id="sheet"></div></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   マスタ（設定画面から追加・削除できます）
+   ============================================================ */
+const DEFAULT_MASTERS = {
+  facilities: [],
+  pharmacists: [],
+  drugs: [
+    "レルベア100エリプタ","レルベア200エリプタ",
+    "テリルジー100エリプタ","テリルジー200エリプタ",
+    "アニュイティエリプタ","フルタイドディスカス","フルタイドエアゾール",
+    "アドエアディスカス","アドエアエアゾール",
+    "シムビコートタービュヘイラー","パルミコートタービュヘイラー",
+    "フルティフォームエアゾール","キュバールエアゾール","オルベスコインヘラー",
+    "ビレーズトリエアロスフィア","ビベスピエアロスフィア",
+    "スピリーバレスピマット","スピリーバハンディヘラー",
+    "エナジアブリーズヘラー","アテキュラブリーズヘラー",
+    "ウルティブロブリーズヘラー","シーブリブリーズヘラー",
+    "エクリラジェヌエア","メプチンエアー","サルタノールインヘラー"
+  ]
+};
+
+const PHARMACIES = {
+  friend:{ name:"フレンド薬局", tel:"03-5548-5548", fax:"03-5548-5547" },
+  sun:   { name:"サン薬局",     tel:"03-3683-7950", fax:"" }
+};
+
+const SKILL_ITEMS = [
+  ["prep",  "デバイスの準備と操作"],
+  ["exhale","吸入前の息吐き"],
+  ["speed", "吸入する「速さ」と「深さ」"],
+  ["hold",  "吸入後の「息止め」と「息吐き」"],
+  ["manage","吸入器の管理（残薬管理含む）"]
+];
+
+const UNDER_ITEMS = [
+  ["dose",   "使用薬剤の名前と用法・用量"],
+  ["usage",  "コントロール薬と発作時薬の使い分け"],
+  ["adverse","副作用について"],
+  ["gargle", "うがいの必要性"]
+];
+
+const OVERALL_OPTS = [
+  ["ok",   "問題なく吸入可能です"],
+  ["issue","吸入手技に問題があります"],
+  ["hard", "吸入困難です（他剤への変更をご考慮ください）"]
+];
+
+const SYMPTOMS = ["口内炎","嗄声","尿閉","口渇","動悸","振戦"];
+
+/* ジャンプバーの項目（id はカードの id と対応） */
+const SECTIONS = [
+  ["secTo",   "宛先"],
+  ["secPt",   "患者"],
+  ["secAll",  "総合評価"],
+  ["secSkill","手技"],
+  ["secUnder","理解度"],
+  ["secNotes","連絡事項"],
+  ["secCmt",  "コメント"],
+  ["secPrev", "確認"]
+];
+
+/* ============================================================
+   状態
+   ============================================================ */
+const LS_DRAFT = "inhReport.draft.v1";
+const LS_MASTER = "inhReport.masters.v1";
+
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function blankState(){
+  return {
+    date: todayISO(),
+    facilityMode: "select",
+    facility: "",
+    doctorMode: "select",
+    doctor: "",
+    pharmacy: "friend",
+    patient: "",
+    pharmacist: "",
+    overall: "",
+    drugCount: 1,
+    drugs: ["",""],
+    drugMode: ["select","select"],
+    skill: { prep:["",""], exhale:["",""], speed:["",""], hold:["",""], manage:["",""] },
+    cont: ["",""],
+    under: { dose:"", usage:"", adverse:"", gargle:"" },
+    notes: {
+      practice:false, verbal:false,
+      spacer:false, spacerText:"",
+      adverse:false, symptoms:[], symptomOther:"",
+      special:false, specialText:""
+    },
+    comment: ""
+  };
+}
+
+function loadJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return fallback;
+    const v = JSON.parse(raw);
+    return (v && typeof v === "object") ? v : fallback;
+  }catch(e){ return fallback; }
+}
+
+let masters = Object.assign({}, DEFAULT_MASTERS, loadJSON(LS_MASTER, {}));
+["facilities","pharmacists","drugs"].forEach(k=>{ if(!Array.isArray(masters[k])) masters[k] = DEFAULT_MASTERS[k].slice(); });
+
+/* 施設は { name, doctors:[] } 形式。旧バージョンの文字列だけの登録もここで引き継ぐ */
+masters.facilities = masters.facilities
+  .map(f => (typeof f === "string")
+    ? { name:f, doctors:[] }
+    : { name:String(f && f.name || ""), doctors:Array.isArray(f && f.doctors) ? f.doctors.slice() : [] })
+  .filter(f => f.name);
+
+const facilityNames = () => masters.facilities.map(f => f.name);
+const facilityByName = n => masters.facilities.find(f => f.name === n) || null;
+const doctorsOf = n => { const f = facilityByName(n); return f ? f.doctors : []; };
+
+let S = Object.assign(blankState(), loadJSON(LS_DRAFT, {}));
+(function repair(){                       // 壊れた下書きでも落ちないように構造を補完する
+  const b = blankState();
+  for(const k in b){ if(S[k] === undefined || S[k] === null) S[k] = b[k]; }
+  if(!Array.isArray(S.drugs)) S.drugs = ["",""];
+  if(!Array.isArray(S.drugMode)) S.drugMode = ["select","select"];
+  if(!Array.isArray(S.cont)) S.cont = ["",""];
+  SKILL_ITEMS.forEach(([k])=>{ if(!Array.isArray(S.skill[k])) S.skill[k] = ["",""]; });
+  UNDER_ITEMS.forEach(([k])=>{ if(typeof S.under[k] !== "string") S.under[k] = ""; });
+  if(!S.notes || typeof S.notes !== "object") S.notes = b.notes;
+  if(!Array.isArray(S.notes.symptoms)) S.notes.symptoms = [];
+})();
+
+let screenName = "form";   // "form" ＝ 入力画面 / "settings" ＝ 設定画面
+let prevZoom = "fit";      // プレビュー倍率： "fit" ＝ 全体表示 / "full" ＝ 原寸
+
+function saveDraft(){ try{ localStorage.setItem(LS_DRAFT, JSON.stringify(S)); }catch(e){} }
+function saveMasters(){ try{ localStorage.setItem(LS_MASTER, JSON.stringify(masters)); }catch(e){} }
+
+function getPath(p){ return p.split(".").reduce((o,k)=> (o==null ? o : o[k]), S); }
+function setPath(p, v){
+  const ks = p.split(".");
+  let o = S;
+  for(let i=0;i<ks.length-1;i++) o = o[ks[i]];
+  o[ks[ks.length-1]] = v;
+}
+
+/* ============================================================
+   部品
+   ============================================================ */
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function segHTML(path, opts){
+  const cur = String(getPath(path));   // drugCount は数値なので文字列で比較する
+  return `<div class="seg grow">` + opts.map(([v,lab])=>
+    `<button data-act="set" data-path="${path}" data-value="${esc(v)}" aria-pressed="${cur===String(v)}">${esc(lab)}</button>`
+  ).join("") + `</div>`;
+}
+
+function pairHTML(path, wide){
+  const cur = getPath(path);
+  const opts = wide ? [["あり","あり","ok"],["なし","なし","ng"]] : [["○","○","ok"],["✕","✕","ng"]];
+  return `<div class="pair ${wide?"wide":""}">` + opts.map(([v,lab,c])=>
+    `<button class="${c}" data-act="set" data-path="${path}" data-value="${esc(v)}" aria-pressed="${cur===v}">${lab}</button>`
+  ).join("") + `</div>`;
+}
+
+function chkHTML(path, label){
+  return `<button class="chk" data-act="toggle" data-path="${path}" aria-pressed="${!!getPath(path)}">
+    <span class="box">✓</span><span>${label}</span></button>`;
+}
+
+/* 項目数が多いマスタ（吸入薬）は iOS のピッカーが出るプルダウンにする */
+function selectHTML(path, list, addKind){
+  const cur = getPath(path);
+  const opts = [`<option value=""${cur?"":" selected"}>― 選択してください ―</option>`]
+    .concat(list.map(v=>`<option value="${esc(v)}"${cur===v?" selected":""}>${esc(v)}</option>`));
+  return `<div style="display:flex; gap:8px; align-items:stretch">
+    <select data-pick="${path}" style="flex:1; min-width:0">${opts.join("")}</select>
+    <button class="btn" style="flex:0 0 auto; min-width:0; padding:0 14px; font-size:14px"
+            data-act="addmaster" data-kind="${addKind}" data-path="${path}">＋登録</button>
+  </div>`;
+}
+
+function chipsHTML(path, list, addKind){
+  const cur = getPath(path);
+  const body = list.length
+    ? list.map(v=>`<button data-act="set" data-path="${path}" data-value="${esc(v)}" aria-pressed="${cur===v}">${esc(v)}</button>`).join("")
+    : `<span class="hint">まだ登録がありません。右の「＋登録」から追加してください。</span>`;
+  return `<div class="chips">${body}<button class="add" data-act="addmaster" data-kind="${addKind}" data-path="${path}">＋登録</button></div>`;
+}
+
+/* 医師名の入力欄。施設を一覧から選んでいるときは、その施設に登録された医師名を候補に出す */
+function doctorFieldHTML(){
+  const freeInput = `<input type="text" data-bind="doctor" value="${esc(S.doctor)}" placeholder="例）山田　太郎">`;
+
+  // 施設が自由入力／未選択のときは、ぶら下げ先が無いので自由入力だけ
+  if(S.facilityMode !== "select" || !S.facility) return freeInput;
+
+  const list = doctorsOf(S.facility);
+  const chips = list.length
+    ? list.map(v=>`<button data-act="set" data-path="doctor" data-value="${esc(v)}" aria-pressed="${S.doctor===v}">${esc(v)}</button>`).join("")
+    : `<span class="hint">「${esc(S.facility)}」の医師名は未登録です。「＋登録」から追加してください。</span>`;
+
+  return `${segHTML("doctorMode",[["select","一覧から選択"],["free","自由入力"]])}
+    <div style="height:8px"></div>
+    ${ S.doctorMode === "select"
+        ? `<div class="chips">${chips}<button class="add" data-act="adddoctor">＋登録</button></div>`
+        : freeInput }`;
+}
+
+function fmtDate(iso){
+  if(!iso) return "　　　年　　月　　日";
+  const [y,m,d] = iso.split("-");
+  return `${Number(y)}年　${Number(m)}月　${Number(d)}日`;
+}
+
+/* ============================================================
+   入力画面（1ページにすべて並べる）
+   ============================================================ */
+function viewForm(){
+  const ph = PHARMACIES[S.pharmacy] || PHARMACIES.friend;
+  const N = S.notes;
+  const n = S.drugCount;
+
+  /* --- 宛先 --- */
+  const secTo = `
+  <div class="card" id="secTo">
+    <h2>報告日・宛先</h2>
+    <div class="field">
+      <label class="lbl">報告日</label>
+      <input type="date" data-bind="date" value="${esc(S.date)}">
+    </div>
+    <div class="field">
+      <label class="lbl">病院・クリニック名の入力方法</label>
+      ${segHTML("facilityMode",[["select","一覧から選択"],["free","自由入力"]])}
+    </div>
+    <div class="field">
+      <label class="lbl">病院・クリニック名</label>
+      ${ S.facilityMode==="select"
+          ? chipsHTML("facility", facilityNames(), "facilities")
+          : `<input type="text" data-bind="facility" value="${esc(S.facility)}" placeholder="例）〇〇内科クリニック">` }
+    </div>
+    <div class="field">
+      <label class="lbl">医師名（任意）</label>
+      ${ doctorFieldHTML() }
+    </div>
+    <div class="field">
+      <label class="lbl">薬局</label>
+      ${segHTML("pharmacy",[["friend","フレンド薬局"],["sun","サン薬局"]])}
+      <div class="hint">TEL：${esc(ph.tel)}　/　FAX：${ph.fax ? esc(ph.fax) : "（なし）"}</div>
+    </div>
+  </div>`;
+
+  /* --- 患者 --- */
+  const secPt = `
+  <div class="card" id="secPt">
+    <h2>患者・担当薬剤師</h2>
+    <div class="field">
+      <label class="lbl">患者名</label>
+      <input type="text" data-bind="patient" value="${esc(S.patient)}" placeholder="例）鈴木　花子">
+    </div>
+    <div class="field">
+      <label class="lbl">担当薬剤師</label>
+      ${chipsHTML("pharmacist", masters.pharmacists, "pharmacists")}
+    </div>
+  </div>`;
+
+  /* --- 総合評価 --- */
+  const secAll = `
+  <div class="card" id="secAll">
+    <h2>吸入指導の総合評価</h2>
+    ${OVERALL_OPTS.map(([v,lab])=>
+      `<button class="chk" data-act="set" data-path="overall" data-value="${v}" aria-pressed="${S.overall===v}">
+        <span class="box">✓</span><span>${esc(lab)}</span></button>`).join("")}
+    <div class="hint">同じ項目をもう一度押すと選択を解除できます。</div>
+  </div>`;
+
+  /* --- 手技評価 --- */
+  const drugFields = [];
+  for(let i=0;i<n;i++){
+    drugFields.push(`
+      <div class="field">
+        <label class="lbl">薬剤${i+1}</label>
+        ${segHTML("drugMode."+i,[["select","一覧から選択"],["free","自由入力"]])}
+        <div style="height:8px"></div>
+        ${ S.drugMode[i]==="select"
+            ? selectHTML("drugs."+i, masters.drugs, "drugs")
+            : `<input type="text" data-bind="drugs.${i}" value="${esc(S.drugs[i])}" placeholder="薬剤名を入力">` }
+      </div>`);
+  }
+  const skillHead = `<tr><th style="width:44%">項目＼薬剤名</th>` +
+    Array.from({length:n},(_,i)=>`<th style="text-align:center">${esc(S.drugs[i]||("薬剤"+(i+1)))}</th>`).join("") + `</tr>`;
+  const skillRows = SKILL_ITEMS.map(([k,lab])=>
+    `<tr><th>${esc(lab)}</th>` +
+    Array.from({length:n},(_,i)=>`<td class="pick">${pairHTML(`skill.${k}.${i}`)}</td>`).join("") + `</tr>`).join("");
+  const skillCont = `<tr><th>継続指導の必要性</th>` +
+    Array.from({length:n},(_,i)=>`<td class="pick">${pairHTML(`cont.${i}`, true)}</td>`).join("") + `</tr>`;
+
+  const secSkill = `
+  <div class="card" id="secSkill">
+    <h2>吸入手技の評価</h2>
+    <div class="field">
+      <label class="lbl">薬剤の数</label>
+      ${segHTML("drugCount",[["1","1剤"],["2","2剤"]])}
+    </div>
+    ${drugFields.join("")}
+    <div style="height:6px"></div>
+    <table class="tbl">
+      <thead>${skillHead}</thead>
+      <tbody>${skillRows}${skillCont}</tbody>
+    </table>
+    <div class="hint">同じボタンをもう一度押すと空欄（未評価）に戻ります。</div>
+  </div>`;
+
+  /* --- 理解度 --- */
+  const underRows = UNDER_ITEMS.map(([k,lab])=>{
+    const cur = S.under[k];
+    return `<tr><th>${esc(lab)}</th><td class="pick">
+      <div class="pair wide">
+        <button class="ok" data-act="set" data-path="under.${k}" data-value="良好" aria-pressed="${cur==="良好"}">良好</button>
+        <button class="ng" data-act="set" data-path="under.${k}" data-value="不良" aria-pressed="${cur==="不良"}">不良</button>
+      </div></td></tr>`;
+  }).join("");
+  const secUnder = `
+  <div class="card" id="secUnder">
+    <h2>吸入療法の理解</h2>
+    <table class="tbl">
+      <thead><tr><th style="width:58%">内容</th><th style="text-align:center">理解度</th></tr></thead>
+      <tbody>${underRows}</tbody>
+    </table>
+  </div>`;
+
+  /* --- 連絡事項 --- */
+  const secNotes = `
+  <div class="card" id="secNotes">
+    <h2>医師への連絡事項</h2>
+    ${chkHTML("notes.practice","練習器・実薬を用いて吸入していただきました")}
+    ${chkHTML("notes.verbal","口頭で確認しました")}
+    ${chkHTML("notes.spacer","スペーサーを使用しました")}
+    ${ N.spacer ? `<div class="field" style="margin:-2px 0 10px 32px">
+        <input type="text" data-bind="notes.spacerText" value="${esc(N.spacerText)}" placeholder="スペーサー名（例）エアロチャンバー プラス">
+      </div>` : "" }
+    ${chkHTML("notes.adverse","副作用が出現しました")}
+    ${ N.adverse ? `<div style="margin:-2px 0 10px 32px">
+        <label class="lbl">症状（複数選択可）</label>
+        <div class="chips">${SYMPTOMS.map(s=>
+          `<button data-act="sym" data-value="${esc(s)}" aria-pressed="${N.symptoms.includes(s)}">${esc(s)}</button>`).join("")}</div>
+        <div style="height:8px"></div>
+        <input type="text" data-bind="notes.symptomOther" value="${esc(N.symptomOther)}" placeholder="その他の症状（自由入力）">
+      </div>` : "" }
+    ${chkHTML("notes.special","特記事項")}
+    ${ N.special ? `<div class="field" style="margin:-2px 0 4px 32px">
+        <input type="text" data-bind="notes.specialText" value="${esc(N.specialText)}" placeholder="特記事項を入力">
+      </div>` : "" }
+  </div>`;
+
+  /* --- コメント --- */
+  const secCmt = `
+  <div class="card" id="secCmt">
+    <h2>コメント（報告書の最後に印字されます）</h2>
+    <textarea data-bind="comment" placeholder="例）吸気流速が弱く、吸入時に「ゴー」という音が確認できませんでした。次回来局時に再度確認いたします。">${esc(S.comment)}</textarea>
+    <div class="hint">未入力の場合、報告書にコメント欄は印字されません。</div>
+  </div>`;
+
+  /* --- 確認 --- */
+  const miss = [];
+  if(!S.facility) miss.push("病院・クリニック名");
+  if(!S.patient) miss.push("患者名");
+  if(!S.pharmacist) miss.push("担当薬剤師");
+  const secPrev = `
+  <div class="card" id="secPrev">
+    <h2>確認・出力</h2>
+    ${ miss.length ? `<div class="banner warn">未入力：${miss.join("・")}</div>` : "" }
+    <div class="seg grow" style="margin-bottom:10px">
+      <button data-act="zoom" data-value="fit"  aria-pressed="${prevZoom==="fit"}">全体表示</button>
+      <button data-act="zoom" data-value="full" aria-pressed="${prevZoom==="full"}">原寸（拡大）</button>
+    </div>
+    <div id="previewWrap"><div id="previewScale"></div></div>
+    <div class="rowbtns">
+      <button class="btn primary" data-act="print">PDF保存・印刷</button>
+    </div>
+    ${ isStandalone() ? `
+    <div class="banner warn" style="margin:12px 0 0">
+      フルスクリーンで起動しています。「PDF保存・印刷」で何も出ない場合は、下のボタンでSafariで開き直してください。
+      <div class="rowbtns" style="margin-top:8px">
+        <button class="btn" data-act="opensafari">Safariで開く</button>
+      </div>
+    </div>` : "" }
+    <div class="hint">
+      iPhone：「PDF保存・印刷」→ プリンタ画面のプレビューをピンチで拡大（または長押し）→ 共有ボタンから「ファイルに保存」でPDFになります。AirPrint対応FAX複合機ならそのまま印刷・送信できます。
+    </div>
+  </div>`;
+
+  return secTo + secPt + secAll + secSkill + secUnder + secNotes + secCmt + secPrev;
+}
+
+/* ============================================================
+   設定画面
+   ============================================================ */
+function viewSettings(){
+  const block = (title, kind, placeholder) => `
+    <div class="card">
+      <h2>${title}</h2>
+      <div class="field">
+        <div style="display:flex; gap:8px">
+          <input type="text" id="add_${kind}" placeholder="${placeholder}">
+          <button class="btn primary" style="flex:0 0 auto; min-width:0" data-act="addmaster" data-kind="${kind}" data-from="add_${kind}">追加</button>
+        </div>
+      </div>
+      ${ masters[kind].length
+          ? masters[kind].map((v,i)=>`<div class="listrow"><span>${esc(v)}</span><button data-act="delmaster" data-kind="${kind}" data-index="${i}">削除</button></div>`).join("")
+          : `<div class="hint">登録がありません。</div>` }
+    </div>`;
+
+  /* 施設は医師名をぶら下げるので専用の見た目にする */
+  const facBlock = `
+    <div class="card">
+      <h2>病院・クリニックと医師名</h2>
+      <div class="field">
+        <div style="display:flex; gap:8px">
+          <input type="text" id="add_facilities" placeholder="例）〇〇内科クリニック">
+          <button class="btn primary" style="flex:0 0 auto; min-width:0" data-act="addmaster" data-kind="facilities" data-from="add_facilities">追加</button>
+        </div>
+      </div>
+      ${ masters.facilities.length ? masters.facilities.map((f,i)=>`
+        <div style="border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px">
+          <div class="listrow" style="border:0; padding:0 0 8px">
+            <span style="font-weight:700">${esc(f.name)}</span>
+            <button data-act="delmaster" data-kind="facilities" data-index="${i}">削除</button>
+          </div>
+          <div class="chips">
+            ${ f.doctors.length
+                ? f.doctors.map((d,j)=>`<button data-act="deldoctor" data-fi="${i}" data-di="${j}">${esc(d)}　✕</button>`).join("")
+                : `<span class="hint">医師名は未登録</span>` }
+            <button class="add" data-act="adddoctorat" data-fi="${i}">＋医師を追加</button>
+          </div>
+        </div>`).join("") : `<div class="hint">登録がありません。</div>` }
+      <div class="hint">医師名をタップすると削除できます。ここで登録した医師名は、入力画面でその施設を選んだときに候補として表示されます。</div>
+    </div>`;
+
+  return `
+  ${facBlock}
+  ${block("薬剤師", "pharmacists", "例）田中　一郎")}
+  ${block("吸入薬", "drugs", "例）〇〇エリプタ")}
+  <div class="card">
+    <h2>データ</h2>
+    <div class="rowbtns">
+      <button class="btn danger" data-act="resetdrugs">吸入薬リストを初期状態に戻す</button>
+    </div>
+    <div class="hint">登録内容と入力中の下書きは、この端末のブラウザ内にのみ保存されます（サーバーには送信されません）。Safariの履歴・サイトデータを消去すると失われます。</div>
+  </div>
+  <div class="rowbtns">
+    <button class="btn primary" data-act="settings">入力画面に戻る</button>
+  </div>`;
+}
+
+/* ============================================================
+   報告書（印刷用シート）の組み立て
+   ============================================================ */
+function buildSheet(){
+  const ph = PHARMACIES[S.pharmacy] || PHARMACIES.friend;
+  const n = S.drugCount;
+  const bx = on => `<span class="bx">${on ? "☑" : "□"}</span>`;
+  const fill = v => `<span class="fill">${esc(v)}</span>`;
+
+  // 施設名の後ろでのみ改行させ、医師名と敬称は分断させない
+  const toLine = `${esc(S.facility)}<span style="white-space:nowrap">${S.doctor ? "　" + esc(S.doctor) : ""}　先生御侍史</span>`;
+  const header = `
+  <table class="hdr">
+    <tr><td class="dt" colspan="2">${fmtDate(S.date)}</td></tr>
+    <tr>
+      <td class="to" style="width:57%"><span class="fill">${toLine}</span></td>
+      <td class="ph" style="width:43%">
+        <b class="fill">${esc(ph.name)}</b><br>
+        <span class="fill">TEL：${esc(ph.tel)}</span><br>
+        <span class="fill">FAX：${esc(ph.fax)}</span>
+      </td>
+    </tr>
+  </table>
+  <div class="line"><span class="u">${esc(S.patient)}</span> 様の吸入指導を</div>
+  <div class="line">薬剤師 <span class="u">${esc(S.pharmacist)}</span> が担当しました</div>`;
+
+  const overall = `
+  <h3>【吸入指導の総合評価】</h3>
+  <div class="opts">
+    ${OVERALL_OPTS.map(([v,lab])=>`<span class="opt">${bx(S.overall===v)}${esc(lab)}</span>`).join("")}
+  </div>`;
+
+  const colw = n === 2 ? "22%" : "30%";
+  const skillHead = `<tr><th style="width:${n===2?"56%":"70%"}">　　　　　　　　　　薬剤名<br>項目</th>` +
+    Array.from({length:n},(_,i)=>`<th style="width:${colw}" class="c">${esc(S.drugs[i])}</th>`).join("") + `</tr>`;
+  const skillRows = SKILL_ITEMS.map(([k,lab])=>
+    `<tr><th>${esc(lab)}</th>` +
+    Array.from({length:n},(_,i)=>`<td class="c">${esc(S.skill[k][i])}</td>`).join("") + `</tr>`).join("");
+  const contRow = `<tr><th>継続指導の必要性</th>` +
+    Array.from({length:n},(_,i)=>{
+      const v = S.cont[i];
+      return `<td class="c" style="font-weight:400">${ v==="あり" ? '<u>あり</u>　・　なし' : v==="なし" ? 'あり　・　<u>なし</u>' : 'あり　・　なし' }</td>`;
+    }).join("") + `</tr>`;
+  const skill = `
+  <h3>【吸入手技の評価】</h3>
+  <table class="ev"><thead>${skillHead}</thead><tbody>${skillRows}${contRow}</tbody></table>`;
+
+  const underRows = UNDER_ITEMS.map(([k,lab])=>{
+    const v = S.under[k];
+    const cell = v==="良好" ? '<u>良好</u>　・　不良' : v==="不良" ? '良好　・　<u>不良</u>' : '良好　・　不良';
+    return `<tr><th>${esc(lab)}</th><td class="c" style="font-weight:400">${cell}</td></tr>`;
+  }).join("");
+  const under = `
+  <h3>【吸入療法の理解】</h3>
+  <table class="ev">
+    <thead><tr><th style="width:70%">内容</th><th class="c" style="width:30%">理解度</th></tr></thead>
+    <tbody>${underRows}</tbody>
+  </table>`;
+
+  const N = S.notes;
+  const symText = N.symptoms.concat(N.symptomOther ? ["その他（" + N.symptomOther + "）"] : []).join("・");
+  const notes = `
+  <h3>【医師への連絡事項】</h3>
+  <div class="opts">
+    <div class="opt" style="display:block">${bx(N.practice)}練習器・実薬を用いて吸入していただきました</div>
+    <div class="opt" style="display:block">${bx(N.verbal)}口頭で確認しました</div>
+    <div class="opt" style="display:block; white-space:normal">${bx(N.spacer)}スペーサー（${fill(N.spacer ? N.spacerText : "")}${N.spacer&&N.spacerText?"":"　　　　　　　　　　"}）を使用しました</div>
+    <div class="opt" style="display:block; white-space:normal">${bx(N.adverse)}副作用が出現しました　症状：${fill(N.adverse ? symText : "")}${N.adverse&&symText?"":"　　　　　　　　　　　　　　　"}</div>
+    <div class="opt" style="display:block; white-space:normal">${bx(N.special)}特記事項（${fill(N.special ? N.specialText : "")}${N.special&&N.specialText?"":"　　　　　　　　　　　　　　　"}）</div>
+  </div>`;
+
+  const comment = S.comment.trim()
+    ? `<h3>【コメント】</h3><div class="cmt fill">${esc(S.comment.trim())}</div>`
+    : "";
+
+  return `<div class="title">吸入指導報告書</div>${header}${overall}${skill}${under}${notes}${comment}`;
+}
+
+/* プレビューを画面幅に合わせて表示する */
+function fitPreview(){
+  const wrap = document.getElementById("previewWrap");
+  const scale = document.getElementById("previewScale");
+  const sheet = document.getElementById("sheet");
+  if(!wrap || !scale || !sheet || sheet.parentElement !== scale) return;
+  const natural = sheet.scrollWidth || 1;
+  const s = (prevZoom === "full") ? 1 : Math.min(1, wrap.clientWidth / natural);
+  scale.style.transform = "scale(" + s + ")";
+  scale.style.width = natural + "px";
+  wrap.style.height = (sheet.scrollHeight * s) + "px";
+  wrap.style.overflowX = (prevZoom === "full") ? "auto" : "hidden";
+}
+
+/* ホーム画面アイコンからフルスクリーンで起動しているか（iOS では共有・印刷バーが出ない） */
+function isStandalone(){
+  return window.navigator.standalone === true
+      || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+}
+
+/* 報告書だけを更新する（再描画しないのでスクロール位置も入力中のフォーカスも動かない） */
+function refreshSheet(){
+  const sheet = document.getElementById("sheet");
+  if(!sheet) return;
+  sheet.innerHTML = buildSheet();
+  fitPreview();
+}
+
+/* 押した選択肢の見た目だけをその場で更新する */
+function updatePressed(path){
+  const v = getPath(path);
+  document.querySelectorAll(`button[data-path="${path}"]`).forEach(b=>{
+    if(b.dataset.act === "toggle")   b.setAttribute("aria-pressed", String(!!v));
+    else if(b.dataset.act === "set") b.setAttribute("aria-pressed", String(String(v) === b.dataset.value));
+  });
+}
+
+/* この操作は他の項目の出し入れを伴わないので、その場更新で足りる */
+function isInPlace(path){
+  return path === "overall"
+      || path.startsWith("skill.")
+      || path.startsWith("cont.")
+      || path.startsWith("under.")
+      || path === "notes.practice"
+      || path === "notes.verbal";
+}
+
+/* 印刷時は main ごと非表示になるため、シートを印刷用領域へ移してから印刷する */
+function doPrint(){
+  const printRoot = document.getElementById("printRoot");
+  const sheet = document.getElementById("sheet");
+  if(!printRoot || !sheet) return;
+
+  printRoot.appendChild(sheet);
+
+  let restored = false;
+  const restore = ()=>{
+    if(restored) return;
+    restored = true;
+    // 連続で押されても確実にプレビュー枠へ戻すため、戻し先はその都度探す
+    const home = document.getElementById("previewScale");
+    if(home){ home.appendChild(sheet); fitPreview(); }
+  };
+  const onAfter = ()=>{ window.removeEventListener("afterprint", onAfter); restore(); };
+  window.addEventListener("afterprint", onAfter);
+  setTimeout(restore, 10000);   // afterprint が発火しない環境の保険
+
+  // まず必ず印刷を試みる。動く環境で勝手に止めてしまわないこと
+  try{
+    window.print();
+  }catch(e){
+    restore();
+    alert("印刷画面を開けませんでした：" + e.message);
+  }
+}
+
+/* ============================================================
+   描画
+   ============================================================ */
+function render(){
+  const y = window.scrollY;
+  const view = document.getElementById("view");
+  const printRoot = document.getElementById("printRoot");
+
+  // プレビュー枠ごと消えてシートを失わないよう、描画前に印刷用領域へ退避しておく
+  const sheet = document.getElementById("sheet");
+  if(sheet && sheet.parentElement !== printRoot) printRoot.appendChild(sheet);
+
+  const isForm = (screenName === "form");
+  view.innerHTML = isForm ? viewForm() : viewSettings();
+
+  document.getElementById("jumpbar").innerHTML = isForm
+    ? SECTIONS.map(([id,lab])=>`<button data-act="jump" data-target="${id}">${lab}</button>`).join("")
+    : "";
+  document.getElementById("jumpbar").style.display = isForm ? "flex" : "none";
+  document.getElementById("actionbar").style.display = isForm ? "flex" : "none";
+
+  document.getElementById("sheet").innerHTML = buildSheet();
+
+  if(isForm){
+    document.getElementById("previewScale").appendChild(document.getElementById("sheet"));
+    fitPreview();
+  }
+  window.scrollTo(0, y);   // 再描画でページ先頭に飛ばさない
+}
+
+/* ============================================================
+   イベント
+   ============================================================ */
+document.body.addEventListener("click", e=>{
+  const b = e.target.closest("button[data-act]");
+  if(!b) return;
+  const act = b.dataset.act;
+
+  if(act === "set"){
+    const path = b.dataset.path;
+    let v = b.dataset.value;
+    if(path === "drugCount") v = Number(v);
+    // 同じ値を再度押したら解除（モード系・薬局・薬剤数は除く）
+    const noClear = ["facilityMode","doctorMode","pharmacy","drugCount"].includes(path) || path.startsWith("drugMode.");
+    if(!noClear && getPath(path) === v) v = "";
+    setPath(path, v);
+    // 施設を変えたら、その施設に属さない医師名は外す
+    if(path === "facility" && !doctorsOf(v).includes(S.doctor)){ S.doctor = ""; S.doctorMode = "select"; }
+    saveDraft();
+    if(isInPlace(path)){ updatePressed(path); refreshSheet(); }
+    else render();
+    return;
+  }
+
+  if(act === "toggle"){
+    const path = b.dataset.path;
+    setPath(path, !getPath(path));
+    saveDraft();
+    if(isInPlace(path)){ updatePressed(path); refreshSheet(); }
+    else render();
+    return;
+  }
+
+  if(act === "sym"){
+    const v = b.dataset.value;
+    const i = S.notes.symptoms.indexOf(v);
+    if(i >= 0) S.notes.symptoms.splice(i,1); else S.notes.symptoms.push(v);
+    saveDraft();
+    b.setAttribute("aria-pressed", String(i < 0));
+    refreshSheet();
+    return;
+  }
+
+  if(act === "zoom"){
+    prevZoom = b.dataset.value;
+    document.querySelectorAll('button[data-act="zoom"]').forEach(x=>
+      x.setAttribute("aria-pressed", String(x.dataset.value === prevZoom)));
+    fitPreview();
+    return;
+  }
+
+  if(act === "jump"){
+    const t = document.getElementById(b.dataset.target);
+    if(t) t.scrollIntoView({behavior:"smooth", block:"start"});
+    return;
+  }
+
+  if(act === "print"){ doPrint(); return; }
+
+  if(act === "opensafari"){
+    // x-safari- を前置すると iOS が強制的に Safari で開く
+    const url = location.href;
+    if(/^https?:/.test(url)) location.href = "x-safari-" + url;
+    else alert("この環境では自動で開けません。SafariでURLを直接開いてください。");
+    return;
+  }
+
+  if(act === "settings"){
+    screenName = (screenName === "settings") ? "form" : "settings";
+    render();
+    window.scrollTo(0,0);
+    return;
+  }
+
+  if(act === "new"){
+    if(!confirm("入力内容をすべて消去して新しい報告書を作成します。よろしいですか？\n（登録した施設名・薬剤師名・薬剤リストは残ります）")) return;
+    S = blankState();
+    saveDraft();
+    screenName = "form";
+    render();
+    window.scrollTo(0,0);
+    return;
+  }
+
+  if(act === "addmaster"){
+    const kind = b.dataset.kind;
+    let val = "";
+    if(b.dataset.from){
+      const inp = document.getElementById(b.dataset.from);
+      val = inp ? inp.value.trim() : "";
+      if(inp) inp.value = "";
+    }else{
+      val = (prompt("追加する名前を入力してください") || "").trim();
+    }
+    if(!val) return;
+    if(kind === "facilities"){
+      if(!facilityByName(val)) masters.facilities.push({ name:val, doctors:[] });
+    }else if(!masters[kind].includes(val)){
+      masters[kind].push(val);
+    }
+    saveMasters();
+    if(b.dataset.path){
+      setPath(b.dataset.path, val);
+      if(b.dataset.path === "facility"){ S.doctor = ""; S.doctorMode = "select"; }
+      saveDraft();
+    }
+    render();
+    return;
+  }
+
+  if(act === "delmaster"){
+    const kind = b.dataset.kind, i = Number(b.dataset.index);
+    const label = (kind === "facilities") ? masters[kind][i].name : masters[kind][i];
+    if(!confirm(`「${label}」を削除しますか？`)) return;
+    masters[kind].splice(i,1);
+    saveMasters(); render();
+    return;
+  }
+
+  /* --- 施設にぶら下がる医師名 --- */
+  if(act === "adddoctor" || act === "adddoctorat"){
+    const f = (act === "adddoctorat") ? masters.facilities[Number(b.dataset.fi)] : facilityByName(S.facility);
+    if(!f){ alert("先に病院・クリニックを選択してください。"); return; }
+    const val = (prompt(`「${f.name}」に登録する医師名を入力してください`) || "").trim();
+    if(!val) return;
+    if(!f.doctors.includes(val)) f.doctors.push(val);
+    saveMasters();
+    if(act === "adddoctor"){ S.doctor = val; S.doctorMode = "select"; saveDraft(); }
+    render();
+    return;
+  }
+
+  if(act === "deldoctor"){
+    const f = masters.facilities[Number(b.dataset.fi)];
+    const j = Number(b.dataset.di);
+    if(!f || !f.doctors[j]) return;
+    const name = f.doctors[j];
+    if(!confirm(`「${f.name}」から医師名「${name}」を削除しますか？`)) return;
+    f.doctors.splice(j,1);
+    saveMasters();
+    if(S.facility === f.name && S.doctor === name){ S.doctor = ""; saveDraft(); }
+    render();
+    return;
+  }
+
+  if(act === "resetdrugs"){
+    if(!confirm("吸入薬リストを初期状態に戻します。よろしいですか？")) return;
+    masters.drugs = DEFAULT_MASTERS.drugs.slice();
+    saveMasters(); render();
+    return;
+  }
+});
+
+document.body.addEventListener("input", e=>{
+  const t = e.target;
+  if(!t.dataset || !t.dataset.bind) return;
+  setPath(t.dataset.bind, t.value);
+  saveDraft();
+  refreshSheet();   // 再描画しないので入力中のフォーカスは外れない
+});
+
+document.body.addEventListener("change", e=>{
+  const t = e.target;
+  if(!t.dataset || !t.dataset.pick) return;
+  setPath(t.dataset.pick, t.value);
+  saveDraft(); render();
+});
+
+window.addEventListener("resize", fitPreview);
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+
+render();
+</script>
+</body>
+</html>
