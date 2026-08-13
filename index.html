@@ -173,6 +173,12 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--pri); outline-of
 #sheet .ev th{font-weight:400; text-align:left}
 #sheet .ev td.c{text-align:center; font-family:-apple-system,"Hiragino Sans",sans-serif; font-weight:700}
 #sheet .ev thead th{text-align:center; font-weight:700}
+/* 「あり・なし」「良好・不良」の選択項目を丸で囲む。
+   行の高さを増やさないよう、上下のパディングは詰めてある */
+#sheet .mark{
+  display:inline-block; border:1px solid #000; border-radius:50%;
+  padding:0 6px; line-height:1.35;
+}
 #sheet .cmt{border:1px solid #000; padding:5px 9px; min-height:34px; white-space:pre-wrap; font-size:9.5pt; line-height:1.5}
 #sheet > *:last-child{margin-bottom:0}
 #sheet .fill{font-family:-apple-system,"Hiragino Sans",sans-serif}
@@ -683,6 +689,8 @@ function buildSheet(){
   const n = S.drugCount;
   const bx = on => `<span class="bx">${on ? "☑" : "□"}</span>`;
   const fill = v => `<span class="fill">${esc(v)}</span>`;
+  // 選択された方だけ丸で囲む（未選択のときはどちらも囲まない）
+  const circ = (on, text) => on ? `<span class="mark">${esc(text)}</span>` : esc(text);
 
   // 施設名の後ろでのみ改行させ、医師名と敬称は分断させない
   const toLine = `${esc(S.facility)}<span style="white-space:nowrap">${S.doctor ? "　" + esc(S.doctor) : ""}　先生御侍史</span>`;
@@ -716,7 +724,7 @@ function buildSheet(){
   const contRow = `<tr><th>継続指導の必要性</th>` +
     Array.from({length:n},(_,i)=>{
       const v = S.cont[i];
-      return `<td class="c" style="font-weight:400">${ v==="あり" ? '<u>あり</u>　・　なし' : v==="なし" ? 'あり　・　<u>なし</u>' : 'あり　・　なし' }</td>`;
+      return `<td class="c" style="font-weight:400">${circ(v==="あり","あり")}　・　${circ(v==="なし","なし")}</td>`;
     }).join("") + `</tr>`;
   const skill = `
   <h3>【吸入手技の評価】</h3>
@@ -724,7 +732,7 @@ function buildSheet(){
 
   const underRows = UNDER_ITEMS.map(([k,lab])=>{
     const v = S.under[k];
-    const cell = v==="良好" ? '<u>良好</u>　・　不良' : v==="不良" ? '良好　・　<u>不良</u>' : '良好　・　不良';
+    const cell = `${circ(v==="良好","良好")}　・　${circ(v==="不良","不良")}`;
     return `<tr><th>${esc(lab)}</th><td class="c" style="font-weight:400">${cell}</td></tr>`;
   }).join("");
   const under = `
