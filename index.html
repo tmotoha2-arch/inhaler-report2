@@ -153,7 +153,8 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--pri); outline-of
   width:186mm; background:#fff; color:#000; padding:0;
   font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
   font-size:10.5pt; line-height:1.4;
-  -webkit-text-size-adjust:100%;   /* iOSが印刷時に文字を勝手に拡大するのを防ぐ */
+  -webkit-text-size-adjust:none;   /* iOSが印刷時に文字を勝手に拡大するのを防ぐ（100%では効かない） */
+  text-size-adjust:none;
 }
 #sheet .title{text-align:center; font-size:15pt; font-weight:700; letter-spacing:.5em; margin:0 0 6px; text-indent:.5em}
 #sheet table{width:100%; border-collapse:collapse; table-layout:fixed}
@@ -178,10 +179,17 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--pri); outline-of
 /* ---------- print ---------- */
 @media print{
   @page{size:A4 portrait; margin:12mm 12mm}
-  html,body{background:#fff !important; padding:0 !important; margin:0 !important}
+  html,body{background:#fff !important; padding:0 !important; margin:0 !important; width:auto !important}
   header,#jumpbar,#actionbar,main{display:none !important}
-  #printRoot{position:static !important; left:auto !important; width:100% !important}
-  #sheet{width:100% !important; transform:none !important}
+  /* 幅は % ではなく mm で固定すること。
+     % は「紙の幅」ではなく「画面の表示幅（iPhoneでは390px）」を基準に計算され、
+     Safari がそのレイアウトを紙幅まで引き伸ばすため、iPhone だけ拡大されて2ページ目にあふれる */
+  #printRoot{
+    position:static !important; left:auto !important; top:auto !important;
+    width:186mm !important; margin:0 auto !important;
+    page-break-inside:avoid; page-break-after:avoid;
+  }
+  #sheet{width:186mm !important; transform:none !important; page-break-inside:avoid}
   #sheet .ev tr,#sheet .hdr tr{page-break-inside:avoid}
 }
 #printRoot{position:absolute; left:-10000px; top:0; width:186mm}
@@ -805,16 +813,22 @@ function pxPerMm(){
   return v || 3.7795;
 }
 
-/* はみ出す分だけ縮めて必ず1枚に収める（コメントが長い場合の保険） */
+/* はみ出す分だけ縮めて必ず1枚に収める（コメントが長い場合の保険）。
+   端末ごとの余白の差を吸収するため、上限そのものではなく 95% を目標にする */
+const FIT_SAFETY = 0.95;
+
 function fitToOnePage(sheet){
   sheet.style.zoom = "";                 // 素の高さを測るため一旦戻す
   const mm = pxPerMm();
   const h = sheet.scrollHeight / mm;
-  if(h > PAGE_H_MM){
-    // 0.99 は端数で2枚目に落ちるのを防ぐための余裕。極端に小さくはしない
-    sheet.style.zoom = String(Math.max(0.65, (PAGE_H_MM / h) * 0.99));
+  const target = PAGE_H_MM * FIT_SAFETY;
+  let z = 1, tooLong = false;
+  if(h > target){
+    z = target / h;
+    if(z < 0.6){ z = 0.6; tooLong = true; }   // これ以上小さくすると読めない
+    sheet.style.zoom = String(z);
   }
-  return h;
+  return { height:h, zoom:z, tooLong };
 }
 
 /* 印刷時は main ごと非表示になるため、シートを印刷用領域へ移してから印刷する */
@@ -824,8 +838,11 @@ function doPrint(){
   if(!printRoot || !sheet) return;
 
   printRoot.appendChild(sheet);
-  printRoot.style.width = PAGE_W_MM + "mm";   // 印刷幅で測るため揃えておく
-  fitToOnePage(sheet);
+  printRoot.style.width = PAGE_W_MM + "mm";   // 印刷時と同じ幅で測る（CSSの @media print と揃える）
+  const fit = fitToOnePage(sheet);
+  if(fit.tooLong){
+    alert("コメントが長すぎるため、1枚に収まらない可能性があります。\nコメントを短くしてから印刷してください。");
+  }
 
   let restored = false;
   const restore = ()=>{
